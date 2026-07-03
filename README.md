@@ -1,8 +1,6 @@
-# 🧬 AutoQSAR Pipeline
+# 🧬 AutoQSAR Pipeline (Ligand-Based Drug Discovery)
 
-An end-to-end automated QSAR (Quantitative Structure–Activity Relationship) pipeline built with Python, RDKit, and Scikit-Learn for molecular descriptor generation, feature selection, machine learning, model comparison, and biological activity prediction.
-
-The pipeline automates the complete workflow from downloading molecular activity data from ChEMBL to training, evaluating, and selecting the best predictive QSAR model.
+An end-to-end automated Quantitative Structure–Activity Relationship (QSAR) pipeline for ligand-based drug discovery. The pipeline automates molecular data retrieval from ChEMBL, descriptor generation with RDKit, feature selection, machine learning model comparison, and biological activity prediction.
 
 ---
 
