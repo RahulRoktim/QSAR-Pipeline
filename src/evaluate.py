@@ -9,37 +9,38 @@ from sklearn.metrics import (
     root_mean_squared_error,
 )
 
+from config import (
+    SELECTED_DATASET,
+    BEST_MODEL_PATH,
+    TEST_SIZE,
+    RANDOM_STATE,
+)
+
 
 def evaluate_model():
 
     print("\n==============================")
-    print("Evaluating Model")
+    print("Evaluating Best Model")
     print("==============================")
 
-    # Load model
-    model = joblib.load("models/random_forest.pkl")
+    # Load best model
+    model = joblib.load(BEST_MODEL_PATH)
 
-    # Load selected features
-    df = pd.read_csv("outputs/selected_features.csv")
+    # Load dataset
+    df = pd.read_csv(SELECTED_DATASET)
 
-    # Features
     X = df.drop(columns=["SMILES", "Activity"])
-
-    # Target
     y = df["Activity"]
 
-    # Same split used during training
-    X_train, X_test, y_train, y_test = train_test_split(
+    _, X_test, _, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,
-        random_state=42,
+        test_size=TEST_SIZE,
+        random_state=RANDOM_STATE,
     )
 
-    # Predict only on test set
     predictions = model.predict(X_test)
 
-    # Metrics
     r2 = r2_score(y_test, predictions)
     mae = mean_absolute_error(y_test, predictions)
     rmse = root_mean_squared_error(y_test, predictions)
@@ -50,43 +51,78 @@ def evaluate_model():
     print(f"MAE  : {mae:.3f}")
     print(f"RMSE : {rmse:.3f}")
 
-    # =====================================
-    # Predicted vs Actual Plot
-    # =====================================
+    # ===============================
+    # Predicted vs Actual
+    # ===============================
 
-    plt.figure(figsize=(6,6))
+    plt.figure(figsize=(6, 6))
 
     plt.scatter(
         y_test,
         predictions,
-        alpha=0.7
+        alpha=0.7,
     )
 
-    minimum = min(y_test.min(), predictions.min())
-    maximum = max(y_test.max(), predictions.max())
+    low = min(y_test.min(), predictions.min())
+    high = max(y_test.max(), predictions.max())
 
     plt.plot(
-        [minimum, maximum],
-        [minimum, maximum],
+        [low, high],
+        [low, high],
         "r--",
-        linewidth=2
+        linewidth=2,
     )
 
-    plt.xlabel("Actual Activity")
-    plt.ylabel("Predicted Activity")
+    plt.xlabel("Actual")
+    plt.ylabel("Predicted")
     plt.title("Predicted vs Actual")
 
     plt.tight_layout()
 
     plt.savefig(
         "outputs/predicted_vs_actual.png",
-        dpi=300
+        dpi=300,
+    )
+
+    plt.close()
+
+    # ===============================
+    # Residual Plot
+    # ===============================
+
+    residuals = y_test - predictions
+
+    plt.figure(figsize=(6, 6))
+
+    plt.scatter(
+        predictions,
+        residuals,
+        alpha=0.7,
+    )
+
+    plt.axhline(
+        y=0,
+        color="red",
+        linestyle="--",
+    )
+
+    plt.xlabel("Predicted")
+    plt.ylabel("Residual")
+
+    plt.title("Residual Plot")
+
+    plt.tight_layout()
+
+    plt.savefig(
+        "outputs/residual_plot.png",
+        dpi=300,
     )
 
     plt.close()
 
     print("\nSaved:")
     print("outputs/predicted_vs_actual.png")
+    print("outputs/residual_plot.png")
 
     return {
         "R2": r2,

@@ -1,31 +1,50 @@
 import joblib
+import pandas as pd
 
 from rdkit import Chem
 from rdkit.Chem import Descriptors
-import pandas as pd
 
-# Load trained model
-model = joblib.load("models/random_forest.pkl")
 
-# New molecule
-smiles = input("Enter SMILES: ")
+def calculate_descriptors(smiles):
 
-mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.MolFromSmiles(smiles)
 
-if mol is None:
-    print("Invalid SMILES!")
-    exit()
+    if mol is None:
+        raise ValueError("Invalid SMILES.")
 
-# Calculate descriptors
-data = pd.DataFrame([{
-    "MW": Descriptors.MolWt(mol),
-    "LogP": Descriptors.MolLogP(mol),
-    "TPSA": Descriptors.TPSA(mol),
-    "HBA": Descriptors.NumHAcceptors(mol),
-    "HBD": Descriptors.NumHDonors(mol),
-    "RotatableBonds": Descriptors.NumRotatableBonds(mol)
-}])
+    descriptor_functions = Descriptors._descList
 
-prediction = model.predict(data)
+    descriptors = {}
 
-print("\nPredicted Activity:", prediction[0])
+    for name, func in descriptor_functions:
+
+        try:
+            descriptors[name] = func(mol)
+
+        except Exception:
+            descriptors[name] = 0
+
+    return pd.DataFrame([descriptors])
+
+
+def predict():
+
+    print("\n==============================")
+    print("Predict New Molecule")
+    print("==============================")
+
+    model = joblib.load("models/best_model.pkl")
+
+    smiles = input("Enter SMILES: ")
+
+    X = calculate_descriptors(smiles)
+
+    prediction = model.predict(X)
+
+    print("\nPredicted Activity")
+    print("------------------------------")
+    print(f"Prediction : {prediction[0]:.4f}")
+
+
+if __name__ == "__main__":
+    predict()
