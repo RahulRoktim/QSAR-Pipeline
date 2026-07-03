@@ -1,59 +1,58 @@
 # 🧬 AutoQSAR Pipeline
 
-![Python](https://img.shields.io/badge/Python-3.11-blue)
-![RDKit](https://img.shields.io/badge/RDKit-Cheminformatics-green)
-![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-Machine%20Learning-orange)
-![License](https://img.shields.io/badge/License-MIT-yellow)
-![Status](https://img.shields.io/badge/Status-Active-success)
+An end-to-end automated QSAR (Quantitative Structure–Activity Relationship) pipeline built with Python, RDKit, and Scikit-Learn for molecular descriptor generation, feature selection, machine learning, model comparison, and biological activity prediction.
 
-An end-to-end QSAR (Quantitative Structure–Activity Relationship) pipeline for molecular descriptor generation, feature selection, machine learning, and biological activity prediction using **RDKit** and **Scikit-Learn**.
-
-This project automates the complete workflow from downloading molecular data from **ChEMBL** to training and validating predictive QSAR models.
+The pipeline automates the complete workflow from downloading molecular activity data from ChEMBL to training, evaluating, and selecting the best predictive QSAR model.
 
 ---
 
-# 📌 Features
+# 🚀 Features
 
-- Download molecular activity data from ChEMBL
+- Automatic molecular activity download from ChEMBL
 - Molecular data preprocessing and cleaning
 - RDKit molecular descriptor calculation
 - Automatic feature selection
-- Random Forest regression model
+- Multiple machine learning algorithms
+- Automatic best model selection
 - 5-Fold Cross Validation
-- Y-Randomization (Response Permutation Test)
-- Feature importance analysis
-- Predicted vs Actual visualization
+- Model comparison
 - Automatic model saving
+- Predicted vs Actual visualization
+- Residual plot generation
+- Modular pipeline architecture
 
 ---
 
 # 🔬 Pipeline Workflow
 
-```
+```text
 ChEMBL Dataset
-       │
-       ▼
-Preprocessing
-       │
-       ▼
+      │
+      ▼
+Data Preprocessing
+      │
+      ▼
 RDKit Descriptor Calculation
-       │
-       ▼
+      │
+      ▼
 Feature Selection
-       │
-       ▼
-Random Forest Training
-       │
-       ▼
-5-Fold Cross Validation
-       │
-       ▼
-Y-Randomization Test
-       │
-       ▼
+      │
+      ▼
+Train Multiple Models
+      │
+      ▼
+Cross Validation
+      │
+      ▼
+Automatic Model Comparison
+      │
+      ▼
+Best Model Selection
+      │
+      ▼
 Model Evaluation
-       │
-       ▼
+      │
+      ▼
 Prediction
 ```
 
@@ -61,28 +60,35 @@ Prediction
 
 # 📂 Project Structure
 
-```
+```text
 QSAR-Pipeline/
 
 ├── data/
 │   ├── raw/
 │   └── processed/
 │
+├── models/
+│
+├── outputs/
+│
 ├── src/
 │   ├── chembl_downloader.py
 │   ├── preprocess.py
 │   ├── descriptors.py
 │   ├── feature_selection.py
+│   ├── feature_selector.py
+│   ├── trainer.py
 │   ├── train.py
 │   ├── evaluate.py
 │   ├── predict.py
+│   ├── comparison.py
+│   ├── models.py
+│   ├── tuning.py
+│   ├── visualization.py
 │   └── utils.py
 │
-├── models/
-├── outputs/
-│
-├── main.py
 ├── config.py
+├── main.py
 ├── requirements.txt
 └── README.md
 ```
@@ -95,7 +101,11 @@ Clone the repository
 
 ```bash
 git clone https://github.com/RahulRoktim/QSAR-Pipeline.git
+```
 
+Move into the project
+
+```bash
 cd QSAR-Pipeline
 ```
 
@@ -107,13 +117,13 @@ python -m venv rdkit_env
 
 Activate
 
-Windows
+### Windows
 
 ```bash
 rdkit_env\Scripts\activate
 ```
 
-Linux / macOS
+### Linux / macOS
 
 ```bash
 source rdkit_env/bin/activate
@@ -135,66 +145,57 @@ Run the complete pipeline
 python main.py
 ```
 
-The pipeline automatically performs
+The pipeline automatically performs:
 
-1. Download ChEMBL dataset
-2. Data preprocessing
-3. Descriptor calculation
-4. Feature selection
-5. Model training
-6. Cross-validation
-7. Y-randomization
-8. Model evaluation
+- Download ChEMBL dataset
+- Data preprocessing
+- Molecular descriptor calculation
+- Feature selection
+- Multiple model training
+- Cross-validation
+- Model comparison
+- Automatic best model selection
+- Model evaluation
+- Prediction
 
 ---
 
-# 📊 Example Performance
+# 🤖 Machine Learning Models
 
-Current implementation achieved:
+The pipeline currently compares:
 
-| Metric | Value |
-|--------|-------:|
-| Test R² | 0.628 |
-| MAE | 0.605 |
-| RMSE | 0.783 |
-| 5-Fold CV R² | 0.685 ± 0.047 |
-| Average Random R² | -0.161 |
+- Random Forest
+- Extra Trees
+- Gradient Boosting
 
-The negative R² values obtained during Y-Randomization indicate that the trained model captures genuine structure–activity relationships rather than learning random correlations.
+Additional models such as XGBoost, LightGBM, CatBoost, and Support Vector Regression can be enabled if installed.
+
+---
+
+# 📊 Evaluation Metrics
+
+The models are evaluated using:
+
+- R² Score
+- Mean Absolute Error (MAE)
+- Root Mean Squared Error (RMSE)
+- 5-Fold Cross Validation
+
+The pipeline automatically selects the model with the highest predictive performance.
 
 ---
 
 # 📈 Generated Outputs
 
-The pipeline automatically generates
+Running the pipeline automatically generates:
 
 - Processed dataset
 - Molecular descriptors
 - Selected features
-- Feature importance CSV
-- Feature importance plot
+- Model comparison table
+- Best trained model
 - Predicted vs Actual plot
-- Trained Random Forest model
-
----
-
-# 🧪 Machine Learning Model
-
-Current model:
-
-- Random Forest Regressor
-
-Validation methods:
-
-- Train/Test Split
-- 5-Fold Cross Validation
-- Y-Randomization Test
-
-Evaluation metrics:
-
-- R² Score
-- Mean Absolute Error (MAE)
-- Root Mean Squared Error (RMSE)
+- Residual plot
 
 ---
 
@@ -203,8 +204,8 @@ Evaluation metrics:
 - Python
 - RDKit
 - Scikit-Learn
-- NumPy
 - Pandas
+- NumPy
 - Matplotlib
 - Joblib
 
@@ -212,33 +213,31 @@ Evaluation metrics:
 
 # 🎯 Future Improvements
 
-Planned enhancements include:
+Planned future enhancements include:
 
-- Hyperparameter optimization
-- Scikit-Learn Pipeline integration
-- Additional ML algorithms
-  - XGBoost
-  - LightGBM
-  - Support Vector Regression
-  - CatBoost
-- SHAP explainability
-- Applicability Domain analysis
-- External validation datasets
-- Deep Learning QSAR models
+- SHAP Explainability
+- Applicability Domain Analysis
+- Learning Curves
+- Hyperparameter Optimization
+- External Validation
+- PDF Report Generation
+- Batch Prediction
+- Deep Learning QSAR Models
 
 ---
 
-# 📖 Research Applications
+# 🧪 Research Applications
 
-This project can be adapted for:
+This pipeline can be adapted for:
 
 - Drug Discovery
 - Lead Optimization
 - Virtual Screening
 - Bioactivity Prediction
 - QSAR Modeling
-- Computational Medicinal Chemistry
 - Computer-Aided Drug Design (CADD)
+- AI-Assisted Drug Discovery
+- Computational Medicinal Chemistry
 
 ---
 
@@ -259,6 +258,12 @@ https://github.com/RahulRoktim
 # ⭐ Acknowledgements
 
 - RDKit Development Team
-- Scikit-Learn Developers
 - ChEMBL Database
-- Open Source Scientific Python Community
+- Scikit-Learn Developers
+- Scientific Python Community
+
+---
+
+# 📜 License
+
+This project is released under the MIT License.
