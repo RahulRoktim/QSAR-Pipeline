@@ -25,10 +25,6 @@ def preprocess():
     # Remove missing values
     df = df.dropna(subset=["canonical_smiles", "pchembl_value"])
 
-    # Keep only unique molecules
-    df = df.drop_duplicates(subset="canonical_smiles")
-
-    # Rename columns
     df = df.rename(
         columns={
             "canonical_smiles": "SMILES",
@@ -36,7 +32,21 @@ def preprocess():
         }
     )
 
-    # Keep only the important columns
+    # Aggregate replicate measurements per molecule using the MEDIAN pChEMBL
+    # value instead of dropping to an arbitrary single record. This keeps one
+    # robust row per unique molecule and reduces measurement noise (a molecule
+    # with 10 IC50 readings should contribute one consolidated activity, not be
+    # thrown away down to whichever row happened to be first).
+    df["Activity"] = pd.to_numeric(df["Activity"], errors="coerce")
+    df = df.dropna(subset=["Activity"])
+
+    df = df.groupby("SMILES", as_index=False).agg(
+        molecule_chembl_id=("molecule_chembl_id", "first"),
+        Activity=("Activity", "median"),
+        standard_units=("standard_units", "first"),
+        standard_type=("standard_type", "first"),
+    )
+
     df = df[
         [
             "molecule_chembl_id",

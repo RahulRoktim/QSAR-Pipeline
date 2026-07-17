@@ -1,0 +1,26 @@
+# QSAR Pipeline - Python dependencies
+# (Previously empty, so `pip install -r requirements.txt` was a no-op.)
+
+# Cheminformatics
+rdkit>=2024.3.1
+chembl_webresource_client>=0.10.9   # ChEMBL activity/target download
+
+# Data + modeling
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.4.0
+joblib>=1.3.0
+
+# Plots
+matplotlib>=3.7.0
+
+# Optional gradient-boosting models (auto-skipped if absent)
+xgboost>=2.0.0
+lightgbm>=4.0.0
+catboost>=1.2
+
+# Optional explainability
+shap>=0.44.0
+
+# Testing
+pytest>=8.0.0

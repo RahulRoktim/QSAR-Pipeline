@@ -3,9 +3,15 @@
 # ======================================
 
 # Dataset
-TARGET = "EGFR"
+TARGET = "BRAF"
 ACTIVITY_TYPE = "IC50"
 MIN_COMPOUNDS = 1000
+
+# Explicit ChEMBL target id (skips the search). ChEMBL has several BRAF target
+# entries; CHEMBL5145 is the canonical human BRAF that holds the bulk of the
+# data - the minor duplicate CHEMBL2331061 has only ~77 activities. Set to None
+# to auto-pick the single-protein target with the MOST activities for TARGET.
+TARGET_CHEMBL_ID = "CHEMBL5145"
 
 # Paths
 RAW_DATASET = "data/raw/raw_dataset.csv"

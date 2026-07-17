@@ -1,6 +1,7 @@
 import joblib
 
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
     r2_score,
     mean_absolute_error,
@@ -63,7 +64,8 @@ def train_all_models(
 
     best_model = None
     best_name = None
-    best_r2 = float("-inf")
+    best_cv = float("-inf")
+    best_test_r2 = float("-inf")
 
     for name, model in models.items():
 
@@ -84,6 +86,13 @@ def train_all_models(
             (
                 "feature_selector",
                 FeatureSelector(),
+            ),
+            (
+                # Standardize descriptors. Scale-sensitive models (SVR, and any
+                # linear/kernel model) are crippled without this; fit inside the
+                # pipeline so CV folds never see test-fold statistics.
+                "scaler",
+                StandardScaler(),
             ),
             (
                 "model",
@@ -125,10 +134,12 @@ def train_all_models(
             scoring="r2",
         )
 
-        print(f"R²   : {r2:.3f}")
-        print(f"MAE  : {mae:.3f}")
-        print(f"RMSE : {rmse:.3f}")
-        print(f"CV   : {cv.mean():.3f}")
+        cv_mean = cv.mean()
+
+        print(f"Test R² : {r2:.3f}")
+        print(f"MAE     : {mae:.3f}")
+        print(f"RMSE    : {rmse:.3f}")
+        print(f"CV R²   : {cv_mean:.3f} (+/- {cv.std():.3f})")
 
         results.append({
 
@@ -136,22 +147,36 @@ def train_all_models(
             "R2": r2,
             "MAE": mae,
             "RMSE": rmse,
-            "CV_R2": cv.mean(),
+            "CV_R2": cv_mean,
+            "CV_R2_STD": cv.std(),
 
         })
 
-        if r2 > best_r2:
+        # Select by CROSS-VALIDATED R², not test-set R². Choosing the model by
+        # its test score leaks the held-out set into model selection and reports
+        # an optimistically biased number.
+        if cv_mean > best_cv:
 
-            best_r2 = r2
+            best_cv = cv_mean
+            best_test_r2 = r2
             best_model = pipeline
             best_name = name
 
     print("\n==============================")
-    print("Best Model")
+    print("Best Model (selected by CV R²)")
     print("==============================")
 
     print(best_name)
-    print(f"R² : {best_r2:.3f}")
+    print(f"CV R²   : {best_cv:.3f}")
+    print(f"Test R² : {best_test_r2:.3f}")
+
+    if best_cv <= 0:
+        print(
+            "\nWARNING: best cross-validated R² is <= 0. The model has no "
+            "predictive power on this dataset (typically caused by too few "
+            "compounds relative to the number of descriptors). Treat "
+            "predictions as unreliable until more training data is added."
+        )
 
     joblib.dump(
         best_model,
@@ -162,5 +187,6 @@ def train_all_models(
         "model": best_model,
         "name": best_name,
         "results": results,
-        "score": best_r2,
+        "cv_score": best_cv,
+        "test_score": best_test_r2,
     }
