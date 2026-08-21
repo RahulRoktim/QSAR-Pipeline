@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it as below."
+type: software
+title: "AutoQSAR Pipeline"
+abstract: >-
+  End-to-end quantitative structure-activity relationship modelling: verified ChEMBL target resolution, bioactivity retrieval, RDKit descriptor calculation, cross-validated feature selection, multi-model comparison and y-randomisation validation.
+authors:
+  - given-names: "Rahul Reza"
+    family-names: "Roktim"
+    affiliation: "Department of Pharmacy, Daffodil International University, Savar, Dhaka, Bangladesh"
+repository-code: "https://github.com/RahulRoktim/QSAR-Pipeline"
+license: MIT
+version: "1.0.0"
+date-released: "2026-08-21"
+keywords:
+  - QSAR
+  - ChEMBL
+  - RDKit
+  - machine learning
+  - cheminformatics

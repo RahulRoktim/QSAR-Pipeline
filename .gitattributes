@@ -1,0 +1,47 @@
+# ============================================================
+# Line endings
+# ============================================================
+# Normalise text to LF in the repository so a checkout on Windows and a run
+# under WSL/Linux do not disagree about every line of every file.
+* text=auto eol=lf
+
+# Shell scripts must keep LF or they will not execute under WSL/Linux.
+*.sh   text eol=lf
+*.mdp  text eol=lf
+
+# Windows launchers MUST keep CRLF or cmd.exe mis-parses them.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# ------------------------------------------------------------
+# Scientific data: never normalise
+# ------------------------------------------------------------
+# Structure and trajectory files are checksummed and parsed byte-for-byte by
+# downstream tools; rewriting their line endings would silently invalidate
+# provenance hashes and, for some parsers, the files themselves.
+*.pdb    -text
+*.pdbqt  -text
+*.sdf    -text
+*.mol    -text
+*.mol2   -text
+*.gro    -text
+*.itp    -text
+*.top    -text
+*.xvg    -text
+*.fasta  -text
+*.pqr    -text
+
+# ------------------------------------------------------------
+# Binary
+# ------------------------------------------------------------
+*.pkl  binary
+*.xtc  binary
+*.trr  binary
+*.tpr  binary
+*.edr  binary
+*.cpt  binary
+*.png  binary
+*.pdf  binary
+*.xlsx binary
+*.docx binary

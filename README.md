@@ -1,264 +1,135 @@
-# 🧬 AutoQSAR Pipeline
+# AutoQSAR Pipeline
 
-![Python](https://img.shields.io/badge/Python-3.11-blue)
-![RDKit](https://img.shields.io/badge/RDKit-Cheminformatics-green)
-![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-Machine%20Learning-orange)
-![License](https://img.shields.io/badge/License-MIT-yellow)
-![Status](https://img.shields.io/badge/Status-Active-success)
+End-to-end quantitative structure–activity relationship modelling: verified
+ChEMBL target resolution → bioactivity retrieval → RDKit descriptors →
+cross-validated feature selection → multi-model comparison → y-randomisation
+validation.
 
-An end-to-end QSAR (Quantitative Structure–Activity Relationship) pipeline for molecular descriptor generation, feature selection, machine learning, and biological activity prediction using **RDKit** and **Scikit-Learn**.
-
-This project automates the complete workflow from downloading molecular data from **ChEMBL** to training and validating predictive QSAR models.
-
----
-
-# 📌 Features
-
-- Download molecular activity data from ChEMBL
-- Molecular data preprocessing and cleaning
-- RDKit molecular descriptor calculation
-- Automatic feature selection
-- Random Forest regression model
-- 5-Fold Cross Validation
-- Y-Randomization (Response Permutation Test)
-- Feature importance analysis
-- Predicted vs Actual visualization
-- Automatic model saving
+[![tests](https://github.com/RahulRoktim/QSAR-Pipeline/actions/workflows/tests.yml/badge.svg)](https://github.com/RahulRoktim/QSAR-Pipeline/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 
 ---
 
-# 🔬 Pipeline Workflow
+## The problem this solves carefully
+
+ChEMBL holds several target entries for most proteins, and the minor duplicates
+carry almost no data — the wrong BRAF entry has roughly 77 activities where the
+canonical one has thousands. Worse, a target *label* and a target *identifier*
+are separate settings, and nothing normally forces them to agree.
+
+This pipeline treats that as a correctness problem, not a convenience one. The
+configured ChEMBL id is fetched and checked against the requested target label
+before a single activity is downloaded. A mismatch raises `TargetMismatchError`
+and stops the run:
 
 ```
-ChEMBL Dataset
-       │
-       ▼
-Preprocessing
-       │
-       ▼
-RDKit Descriptor Calculation
-       │
-       ▼
-Feature Selection
-       │
-       ▼
-Random Forest Training
-       │
-       ▼
-5-Fold Cross Validation
-       │
-       ▼
-Y-Randomization Test
-       │
-       ▼
-Model Evaluation
-       │
-       ▼
-Prediction
+TargetMismatchError: Configured TARGET_CHEMBL_ID='CHEMBL5145' resolves to
+'Serine/threonine-protein kinase B-raf' (genes: BRAF), which does not
+correspond to TARGET='PI3K'.
+Refusing to download: this would produce a dataset labelled 'PI3K' containing
+'Serine/threonine-protein kinase B-raf' activities.
 ```
+
+Without that guard the run completes normally and every plot, metric and report
+is mislabelled — an error invisible at every downstream stage.
 
 ---
 
-# 📂 Project Structure
+## Method
 
-```
-QSAR-Pipeline/
+| Stage | What happens |
+|---|---|
+| **Target resolution** | Verified id, or search + pick the single-protein entry with the most activities for the endpoint |
+| **Download** | All activities carrying a pChEMBL value, paged with retry — not a capped first 1000 |
+| **Preprocessing** | Replicates aggregated by **median** pChEMBL per unique SMILES; unusable records dropped, never coerced |
+| **Descriptors** | Full RDKit descriptor block; unparseable SMILES excluded rather than imputed |
+| **Feature selection** | Cross-validated selection inside the training fold |
+| **Modelling** | Random Forest, XGBoost, LightGBM, CatBoost compared under one seed |
+| **Validation** | Hold-out test set plus **y-randomisation** (default 10 scrambles) |
+| **Provenance** | `outputs/run_manifest.json` records settings, resolved target, dataset SHA-256s, library versions and git commit |
 
-├── data/
-│   ├── raw/
-│   └── processed/
-│
-├── src/
-│   ├── chembl_downloader.py
-│   ├── preprocess.py
-│   ├── descriptors.py
-│   ├── feature_selection.py
-│   ├── train.py
-│   ├── evaluate.py
-│   ├── predict.py
-│   └── utils.py
-│
-├── models/
-├── outputs/
-│
-├── main.py
-├── config.py
-├── requirements.txt
-└── README.md
-```
+Median aggregation matters: a molecule with ten IC50 readings should contribute
+one consolidated, noise-reduced activity rather than whichever row happened to
+be first.
 
 ---
 
-# ⚙️ Installation
-
-Clone the repository
+## Installation
 
 ```bash
-git clone https://github.com/RahulRoktim/QSAR-Pipeline.git
-
-cd QSAR-Pipeline
-```
-
-Create a virtual environment
-
-```bash
-python -m venv rdkit_env
-```
-
-Activate
-
-Windows
-
-```bash
-rdkit_env\Scripts\activate
-```
-
-Linux / macOS
-
-```bash
-source rdkit_env/bin/activate
-```
-
-Install dependencies
-
-```bash
+conda create -n qsar python=3.11 && conda activate qsar
 pip install -r requirements.txt
+pytest -q
 ```
 
----
-
-# 🚀 Usage
-
-Run the complete pipeline
+To reproduce a published result, install the verified set instead:
 
 ```bash
-python main.py
+pip install -r requirements-lock.txt
 ```
 
-The pipeline automatically performs
+---
 
-1. Download ChEMBL dataset
-2. Data preprocessing
-3. Descriptor calculation
-4. Feature selection
-5. Model training
-6. Cross-validation
-7. Y-randomization
-8. Model evaluation
+## Usage
+
+Every setting that affects a result is a flag, so a run is reproducible from its
+manifest alone.
+
+```bash
+# Resolve and validate the target, print the plan, download nothing
+python main.py --target BRAF --dry-run
+
+# Full run with defaults
+python main.py --target BRAF --activity-type IC50
+
+# Explicit id (verified against the label before use)
+python main.py --target PI3K --target-chembl-id CHEMBL3145
+
+# Re-model an existing download without re-querying ChEMBL
+python main.py --skip-download --cv-folds 10 --random-state 7
+```
+
+`python main.py --help` lists every flag with its default.
+
+### Defaults
+
+Defaults live in `config.py`. `KNOWN_TARGET_IDS` holds hand-verified ChEMBL ids
+per target, so the curated knowledge survives a change of `TARGET` instead of
+being stranded in one global that then applies to the wrong protein.
 
 ---
 
-# 📊 Example Performance
+## Validation status
 
-Current implementation achieved:
-
-| Metric | Value |
-|--------|-------:|
-| Test R² | 0.628 |
-| MAE | 0.605 |
-| RMSE | 0.783 |
-| 5-Fold CV R² | 0.685 ± 0.047 |
-| Average Random R² | -0.161 |
-
-The negative R² values obtained during Y-Randomization indicate that the trained model captures genuine structure–activity relationships rather than learning random correlations.
+| Layer | Status |
+|---|---|
+| Target identity guard | 15 tests, including the PI3K/BRAF mismatch regression |
+| CLI override and validation | 14 tests |
+| Preprocessing | 8 tests — median aggregation, de-duplication, unusable records |
+| Descriptors | 8 tests — determinism, chemical correctness, invalid SMILES |
+| **Total** | **45 passing** |
+| End-to-end ChEMBL run | Requires network; not covered by CI |
 
 ---
 
-# 📈 Generated Outputs
+## Limitations
 
-The pipeline automatically generates
-
-- Processed dataset
-- Molecular descriptors
-- Selected features
-- Feature importance CSV
-- Feature importance plot
-- Predicted vs Actual plot
-- Trained Random Forest model
+- **Correlation, not causation.** A QSAR model describes the chemical space it was trained on. Predictions for scaffolds outside that space are extrapolation.
+- **Applicability domain is not yet enforced at prediction time.** Treat predictions for dissimilar compounds as unreliable until this lands.
+- **pChEMBL mixes assays.** Median aggregation reduces replicate noise but cannot correct for systematically different assay protocols contributing to the same target.
+- **Descriptor-based only.** No 3D conformer or fingerprint-based representation yet.
+- **Single train/test split** by default. Report cross-validated metrics for anything published, and always report the y-randomisation result alongside them.
 
 ---
 
-# 🧪 Machine Learning Model
+## Citation
 
-Current model:
-
-- Random Forest Regressor
-
-Validation methods:
-
-- Train/Test Split
-- 5-Fold Cross Validation
-- Y-Randomization Test
-
-Evaluation metrics:
-
-- R² Score
-- Mean Absolute Error (MAE)
-- Root Mean Squared Error (RMSE)
+If this software contributes to published work, please cite it via
+[`CITATION.cff`](CITATION.cff), and cite ChEMBL and RDKit independently.
 
 ---
 
-# 📚 Technologies Used
+## Licence
 
-- Python
-- RDKit
-- Scikit-Learn
-- NumPy
-- Pandas
-- Matplotlib
-- Joblib
-
----
-
-# 🎯 Future Improvements
-
-Planned enhancements include:
-
-- Hyperparameter optimization
-- Scikit-Learn Pipeline integration
-- Additional ML algorithms
-  - XGBoost
-  - LightGBM
-  - Support Vector Regression
-  - CatBoost
-- SHAP explainability
-- Applicability Domain analysis
-- External validation datasets
-- Deep Learning QSAR models
-
----
-
-# 📖 Research Applications
-
-This project can be adapted for:
-
-- Drug Discovery
-- Lead Optimization
-- Virtual Screening
-- Bioactivity Prediction
-- QSAR Modeling
-- Computational Medicinal Chemistry
-- Computer-Aided Drug Design (CADD)
-
----
-
-# 👨‍💻 Author
-
-**Rahul Roktim**
-
-Bachelor of Pharmacy  
-Daffodil International University  
-Bangladesh
-
-GitHub:
-
-https://github.com/RahulRoktim
-
----
-
-# ⭐ Acknowledgements
-
-- RDKit Development Team
-- Scikit-Learn Developers
-- ChEMBL Database
-- Open Source Scientific Python Community
+MIT — see [LICENSE](LICENSE).

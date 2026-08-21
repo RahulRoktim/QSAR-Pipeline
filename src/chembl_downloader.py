@@ -3,11 +3,12 @@ import pandas as pd
 
 from chembl_webresource_client.new_client import new_client
 
-from config import (
-    TARGET,
-    ACTIVITY_TYPE,
-    RAW_DATASET,
-    TARGET_CHEMBL_ID,
+import config
+from src.target_resolver import (
+    ResolvedTarget,
+    TargetResolutionError,
+    choose_best_target,
+    verify_configured_target,
 )
 
 
@@ -18,79 +19,88 @@ class ChEMBLDownloader:
         self.target_api = new_client.target
         self.activity_api = new_client.activity
 
+    def resolve_target(self) -> ResolvedTarget:
+        """Resolve and verify the ChEMBL target before any data is downloaded.
+
+        A configured TARGET_CHEMBL_ID is not trusted on sight: it is fetched and
+        checked against config.TARGET, so a label/id mismatch fails loudly here
+        instead of silently mislabelling the whole dataset.
+        """
+        label = config.TARGET
+        configured = config.TARGET_CHEMBL_ID or config.KNOWN_TARGET_IDS.get(label.upper())
+
+        if configured:
+            print(f"\nVerifying configured target {configured} against '{label}'...")
+
+            record = self._fetch_target(configured)
+
+            if record is None:
+                raise TargetResolutionError(
+                    f"ChEMBL returned no record for {configured!r}."
+                )
+
+            return verify_configured_target(label, configured, record)
+
+        print(f"\nSearching ChEMBL for '{label}'...\n")
+
+        targets = self._search(label)
+
+        resolved = choose_best_target(label, targets, self.activity_count)
+
+        print(
+            f"\nAuto-selected: {resolved.chembl_id} | {resolved.pref_name} "
+            "(most activities among matching single-protein targets)"
+        )
+
+        return resolved
+
+    # Backwards-compatible shim for callers that only need the identifier.
     def search_target(self):
+        return self.resolve_target().chembl_id
 
-        # Automatable: use a configured ChEMBL id if provided, otherwise search
-        # and auto-pick a single-protein target (no interactive input()).
-        if TARGET_CHEMBL_ID:
-            print(f"Using configured target: {TARGET_CHEMBL_ID}")
-            return TARGET_CHEMBL_ID
-
-        print(f"\nSearching ChEMBL for '{TARGET}'...\n")
-
-        targets = None
+    def _fetch_target(self, target_chembl_id):
         for attempt in range(1, 6):
             try:
-                targets = list(self.target_api.search(TARGET))
-                break
+                results = list(
+                    self.target_api.filter(target_chembl_id=target_chembl_id)
+                )
+                return results[0] if results else None
             except Exception as error:
                 print(
-                    f"ChEMBL target search failed (attempt {attempt}/5): {error}"
-                )
-                print(
-                    "The ChEMBL/EBI service may be temporarily unavailable. "
-                    "Retrying in 10s..."
+                    f"ChEMBL target lookup failed (attempt {attempt}/5): {error}"
                 )
                 time.sleep(10)
 
-        if not targets:
-            raise Exception(
-                "Could not reach ChEMBL after several attempts. The EBI service "
-                "may be down (e.g. HTTP 500) - try again later, or set "
-                "TARGET_CHEMBL_ID in config.py to skip the target search."
-            )
+        raise TargetResolutionError(
+            "Could not reach ChEMBL after several attempts. The EBI service may "
+            "be unavailable - try again later."
+        )
 
-        for i, t in enumerate(targets):
-            print(
-                f"{i}: {t['target_chembl_id']} | "
-                f"{t.get('pref_name','Unknown')} | "
-                f"{t.get('target_type','Unknown')}"
-            )
-
-        # ChEMBL often has several target entries for one protein, and the
-        # minor duplicates carry almost no data (this is exactly how the wrong
-        # BRAF entry with only ~77 activities got picked). Among single-protein
-        # targets, choose the one with the MOST activity records for our
-        # endpoint.
-        single_protein = [
-            t for t in targets if t.get("target_type") == "SINGLE PROTEIN"
-        ]
-        candidates = single_protein or targets
-
-        def activity_count(target_id):
+    def _search(self, label):
+        for attempt in range(1, 6):
             try:
-                return len(
-                    self.activity_api.filter(
-                        target_chembl_id=target_id,
-                        standard_type=ACTIVITY_TYPE,
-                        pchembl_value__isnull=False,
-                    )
+                return list(self.target_api.search(label))
+            except Exception as error:
+                print(f"ChEMBL target search failed (attempt {attempt}/5): {error}")
+                print("The ChEMBL/EBI service may be temporarily unavailable.")
+                time.sleep(10)
+
+        raise TargetResolutionError(
+            "Could not reach ChEMBL after several attempts. Set "
+            "TARGET_CHEMBL_ID to skip the search, or retry later."
+        )
+
+    def activity_count(self, target_id):
+        try:
+            return len(
+                self.activity_api.filter(
+                    target_chembl_id=target_id,
+                    standard_type=config.ACTIVITY_TYPE,
+                    pchembl_value__isnull=False,
                 )
-            except Exception:
-                return 0
-
-        chosen = max(
-            candidates,
-            key=lambda t: activity_count(t["target_chembl_id"]),
-        )
-
-        print(
-            f"\nAuto-selected: {chosen['target_chembl_id']} | "
-            f"{chosen.get('pref_name')} | {chosen.get('target_type')} "
-            "(most activities)"
-        )
-
-        return chosen["target_chembl_id"]
+            )
+        except Exception:
+            return 0
 
     def download_pages(self, target_chembl):
 
@@ -102,7 +112,7 @@ class ChEMBLDownloader:
 
         activities = self.activity_api.filter(
             target_chembl_id=target_chembl,
-            standard_type=ACTIVITY_TYPE,
+            standard_type=config.ACTIVITY_TYPE,
             pchembl_value__isnull=False,
         )
 
@@ -137,15 +147,15 @@ class ChEMBLDownloader:
             time.sleep(0.2)
 
         df = pd.DataFrame(all_rows)
-        df.to_csv(RAW_DATASET, index=False)
+        df.to_csv(config.RAW_DATASET, index=False)
 
         print("\nDownload complete!")
         print(f"Saved {len(df)} activity records")
-        print(f"Location: {RAW_DATASET}")
+        print(f"Location: {config.RAW_DATASET}")
 
     def run(self):
 
-        target_chembl = self.search_target()
+        target_chembl = self.resolve_target().chembl_id
 
         self.download_pages(target_chembl)
 
